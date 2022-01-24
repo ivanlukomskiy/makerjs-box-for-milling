@@ -62,15 +62,15 @@ const toothHolesElevation = 2 * materialWidth;
 
 const Align = Object.freeze({'center': 1, 'right': 2})
 
-function drawToothedLineSegment(x, len, convex, toothDepth) {
-    if (convex) {
+function drawToothedLineSegment(x, toothLength, isConvex, toothDepth) {
+    if (isConvex) {
         return [
-            new makerjs.paths.Line([x, toothDepth], [x + len, toothDepth]),
-            new makerjs.paths.Line([x + len, 0], [x + len, toothDepth]),
+            new makerjs.paths.Line([x, toothDepth], [x + toothLength, toothDepth]),
+            new makerjs.paths.Line([x + toothLength, 0], [x + toothLength, toothDepth]),
             new makerjs.paths.Line([x, 0], [x, toothDepth])
         ]
     } else {
-        return [new makerjs.paths.Line([x, 0], [x + len, 0])]
+        return [new makerjs.paths.Line([x, 0], [x + toothLength, 0])]
     }
 }
 
@@ -154,21 +154,21 @@ function addHandles(models, sideConfig, handles) {
     }
 }
 
-function addGrooves(models, sideConfig, tolerance) {
+function addToothHoles(models, sideConfig, tolerance) {
     const {
         toothHolesCount, toothHolesLength, toothHolesWidth,
         toothHolesElevation, legsLength, width, roundings
     } = sideConfig;
     const spacing = (width - toothHolesCount * toothHolesLength) / toothHolesCount;
-    const grooves = {}
+    const toothHoles = {}
     for (let i = 0; i < toothHolesCount; i++) {
         const handle = new makerjs.models.Rectangle(toothHolesLength, toothHolesWidth + tolerance)
         const x = spacing * (i + 0.5) + toothHolesLength * i;
         makerjs.model.move(handle, [x, toothHolesElevation + legsLength - tolerance / 2]);
-        grooves['toothHole' + i] = handle;
+        toothHoles['toothHole' + i] = handle;
     }
-    addUndercuts(grooves, roundings);
-    models['grooves'] = {models: grooves};
+    addUndercuts(toothHoles, roundings);
+    models['toothHoles'] = {models: toothHoles};
 }
 
 function drawSide(sideConfig) {
@@ -211,7 +211,7 @@ function drawSide(sideConfig) {
     if (handles !== null) {
         addHandles(models, sideConfig, handles)
     }
-    addGrooves(models, sideConfig, tolerance['width']);
+    addToothHoles(models, sideConfig, tolerance['width']);
     return {models};
 }
 
