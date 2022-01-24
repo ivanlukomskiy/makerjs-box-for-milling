@@ -35,10 +35,8 @@ const legsLength = lenZ * 0.05;
 // Радиус скруглений внутренних углов
 const roundings = 3;
 
-// Примерная длина на одну ручку
-const desiredLengthPerHandle = 850;
 // Число ручек
-const handlesCount = Math.max(1, Math.round(lenX / desiredLengthPerHandle))
+const handlesCount = lenX > 750 ? 2 : 1;
 // Ширина и радиус скругления ручки
 const handlesWidth = 150;
 const handlesRadius = 20;
