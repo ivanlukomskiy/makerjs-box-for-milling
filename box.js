@@ -3,10 +3,15 @@
 
 var makerjs = require('makerjs');
 
+// Линейные размеры макета
+const designLenX = 600;
+const designLenY = 450;
+const designLenZ = 400;
+
 // Линейные размеры коробки
-const lenX = 800;
-const lenY = 500;
-const lenZ = 450;
+const lenX = designLenX + 40;
+const lenY = designLenY + 40;
+const lenZ = designLenZ + 40;
 
 const toothLength = 100;  // Длина зуба для дна коробки
 const sheetThickness = 14;  // Толщина листа
@@ -15,6 +20,7 @@ const sheetThickness = 14;  // Толщина листа
 const toleranceConfig = {
     length: 0, // Допуск по длине зубца (влияет на ширину зубцов относительно пазов под них)
     width: 0, // Допуск по толщине зубца (влияет на ширину отверстия под зубец в стенке коробки)
+    lidTolerance: -3, // Допуск для крышки
 };
 
 // Примерная высота зубца на стыке вертикальных стенок
@@ -51,9 +57,9 @@ const ventHoleOffset = 50;
 const drawingsSpacingCoefficient = 1.5;
 
 // Размеры паза под крышку коробки
-const lidToothLengthFraction = 0.8;
-const lidToothLenX = Math.min(lenX, lenY) * lidToothLengthFraction;
-const lidToothLenY = Math.min(lenX, lenY) * lidToothLengthFraction;
+const lidToothOffset = 0.2 * Math.min(lenX, lenY);
+const lidToothLenX = lenX - 2 * lidToothOffset;
+const lidToothLenY = lenY - 2 * lidToothOffset;
 
 // Отступ отверстий под зубья дна коробки от нижнего края стенки
 const toothHolesElevation = 2 * sheetThickness;
@@ -262,32 +268,35 @@ function drawBottom() {
 }
 
 function drawTop() {
+    const realLenY = lenY + toleranceConfig.lidTolerance;
+    const realLenX = lenX + toleranceConfig.lidTolerance;
+
     const leftWall = drawToothedLine({
-        len: lenY,
+        len: realLenY,
         toothLength: lidToothLenY,
-        toothDepth,
-        tolerance: toleranceConfig.length
+        toothDepth: toothDepth - toleranceConfig.lidTolerance / 2,
+        tolerance: toleranceConfig.length + toleranceConfig.lidTolerance
     });
     makerjs.model.rotate(leftWall, 90, [0, 0]);
     const rightWall = makerjs.model.mirror(leftWall, true, false);
-    makerjs.model.move(rightWall, [lenX, 0]);
+    makerjs.model.move(rightWall, [realLenX, 0]);
 
     const bottomWall = drawToothedLine({
-        len: lenX,
+        len: realLenX,
         toothLength: lidToothLenX,
-        toothDepth,
-        tolerance: toleranceConfig.length
+        toothDepth: toothDepth - toleranceConfig.lidTolerance / 2,
+        tolerance: toleranceConfig.length + toleranceConfig.lidTolerance
     });
     const topWall = makerjs.model.mirror(bottomWall, false, true);
-    makerjs.model.move(bottomWall, [0, lenY]);
+    makerjs.model.move(bottomWall, [0, realLenY]);
 
     const models = {leftWall, rightWall, bottomWall, topWall};
     addUndercuts(models);
 
     // add vent holes
-    const vh1 = new makerjs.paths.Circle([ventHoleOffset + ventHoleDiameter / 2, lenY / 2],
+    const vh1 = new makerjs.paths.Circle([ventHoleOffset + ventHoleDiameter / 2, realLenY / 2],
         ventHoleDiameter / 2);
-    const vh2 = new makerjs.paths.Circle([lenX - ventHoleOffset - ventHoleDiameter / 2, lenY / 2],
+    const vh2 = new makerjs.paths.Circle([realLenX - ventHoleOffset - ventHoleDiameter / 2, realLenY / 2],
         ventHoleDiameter / 2);
     models['ventHoles'] = {paths: {vh1, vh2}}
 
