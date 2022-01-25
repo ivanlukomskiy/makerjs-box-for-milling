@@ -9,10 +9,10 @@ const lenY = 500;
 const lenZ = 450;
 
 const toothLength = 100;  // Длина зуба для дна коробки
-const materialWidth = 14;  // Толщина листа
+const sheetThickness = 14;  // Толщина листа
 
 // Допуски, положительный - более тугая посадка, отрицательный - более свободная
-const tolerance = {
+const toleranceConfig = {
     length: 0, // Допуск по длине зубца (влияет на ширину зубцов относительно пазов под них)
     width: 0, // Допуск по толщине зубца (влияет на ширину отверстия под зубец в стенке коробки)
 };
@@ -41,7 +41,7 @@ const handlesCount = lenX > 750 ? 2 : 1;
 const handlesWidth = 150;
 const handlesRadius = 20;
 // Отступ ручки от верха коробки
-const handlesDescent = 4 * materialWidth;
+const handlesDescent = 4 * sheetThickness;
 
 // Диаметр вентиляционного отверстия и его отступ от края коробки
 const ventHoleDiameter = 40;
@@ -56,7 +56,14 @@ const lidToothLenX = lenX * lidToothLengthFraction;
 const lidToothLenY = lenY * lidToothLengthFraction;
 
 // Отступ отверстий под зубья дна коробки от нижнего края стенки
-const toothHolesElevation = 2 * materialWidth;
+const toothHolesElevation = 2 * sheetThickness;
+
+// Длина и ширина отверстий под зубья дна коробки
+const toothHolesLength = toothLength;
+const toothHolesWidth = sheetThickness;
+
+// Длина зубцов
+const toothDepth = sheetThickness;
 
 const Align = Object.freeze({'center': 1, 'right': 2})
 
@@ -72,11 +79,11 @@ function drawToothedLineSegment(x, toothLength, isConvex, toothDepth) {
     }
 }
 
-function drawToothedLine(wallConfig, wallTolerance) {
+function drawToothedLine(lineConfig) {
     const {
-        len, toothCount = 1, toothLength, toothSpacing = 0, toothDepth,
-        mother = false, align = Align.center
-    } = wallConfig;
+        len, toothCount = 1, toothLength, toothSpacing = 0, toothDepth, isMother = false,
+        align = Align.center, tolerance
+    } = lineConfig;
 
     let totalOffset = len - toothCount * toothLength - (toothCount - 1) * toothSpacing;
     if (totalOffset < 0) {
@@ -99,24 +106,24 @@ function drawToothedLine(wallConfig, wallTolerance) {
 
     const segments = [];
     if (offsetLeft !== 0) {
-        segments.push({len: offsetLeft, convex: mother})
+        segments.push({len: offsetLeft, convex: isMother})
     }
     for (let i = 0; i < toothCount; i++) {
-        segments.push({len: toothLength, convex: !mother});
+        segments.push({len: toothLength, convex: !isMother});
         if (i < toothCount - 1) {
-            segments.push({len: toothSpacing, convex: mother});
+            segments.push({len: toothSpacing, convex: isMother});
         }
     }
     if (offsetRight !== 0) {
-        segments.push({len: offsetRight, convex: mother});
+        segments.push({len: offsetRight, convex: isMother});
     }
 
-    // Apply tolerances
+    // Apply tolerance
     for (let i = 0; i < segments.length; i++) {
         const segment = segments[i]
         const toleranceMultiplier = i === 0 || i === segments.length - 1 ? 0.5 : 1;
         const toleranceSign = segment['convex'] ? 1 : -1;
-        segment['len'] = segment['len'] + wallTolerance * toleranceMultiplier * toleranceSign;
+        segment['len'] = segment['len'] + tolerance * toleranceMultiplier * toleranceSign;
     }
 
     let paths = {};
@@ -132,7 +139,7 @@ function drawToothedLine(wallConfig, wallTolerance) {
     return {paths};
 }
 
-function addUndercuts(models, roundings) {
+function addUndercuts(models) {
     const chains = makerjs.model.findChains({models});
     for (let i = 0; i < chains.length; i++) {
         const chain = chains[i];
@@ -143,7 +150,7 @@ function addUndercuts(models, roundings) {
 function addHandles(models, sideConfig, handles) {
     const {count, descent, width, radius} = handles
     const spacing = (sideConfig['width'] - count * width - count * radius * 2) / count;
-    const y = sideConfig['height'] - descent - radius * 2 - sideConfig['toothDepth'];
+    const y = sideConfig['height'] - descent - radius * 2 - toothDepth
     for (let i = 0; i < count; i++) {
         const x = spacing * (i + 0.5) + (width + radius * 2) * i;
         const handle = new makerjs.models.Oval(width + radius * 2, radius * 2)
@@ -152,27 +159,25 @@ function addHandles(models, sideConfig, handles) {
     }
 }
 
-function addToothHoles(models, sideConfig, tolerance) {
+function addToothHoles(models, sideConfig) {
     const {
-        toothHolesCount, toothHolesLength, toothHolesWidth,
-        toothHolesElevation, legsLength, width, roundings
+        toothHolesCount, width
     } = sideConfig;
     const spacing = (width - toothHolesCount * toothHolesLength) / toothHolesCount;
     const toothHoles = {}
     for (let i = 0; i < toothHolesCount; i++) {
-        const handle = new makerjs.models.Rectangle(toothHolesLength, toothHolesWidth + tolerance)
+        const handle = new makerjs.models.Rectangle(toothHolesLength, toothHolesWidth - toleranceConfig.width)
         const x = spacing * (i + 0.5) + toothHolesLength * i;
-        makerjs.model.move(handle, [x, toothHolesElevation + legsLength - tolerance / 2]);
+        makerjs.model.move(handle, [x, toothHolesElevation + legsLength + toleranceConfig.width / 2]);
         toothHoles['toothHole' + i] = handle;
     }
-    addUndercuts(toothHoles, roundings);
+    addUndercuts(toothHoles);
     models['toothHoles'] = {models: toothHoles};
 }
 
 function drawSide(sideConfig) {
     const {
-        width, height, zSegmentsCount, toothDepth, tolerance, legsWidth, legsLength, lidToothLength,
-        roundings, mother, handles = null
+        width, height, lidToothLength, isMother, handles = null
     } = sideConfig
     const zToothCount = Math.ceil(zSegmentsCount / 2)
     const leftWall = drawToothedLine({
@@ -181,9 +186,10 @@ function drawSide(sideConfig) {
         toothLength: height / zSegmentsCount,
         toothSpacing: height / zSegmentsCount,
         toothDepth,
-        mother,
+        isMother,
         align: Align.right,
-    }, tolerance['length']);
+        tolerance: toleranceConfig.length,
+    });
     makerjs.model.rotate(leftWall, 90, [0, 0]);
     const rightWall = makerjs.model.mirror(leftWall, true, false);
     makerjs.model.move(rightWall, [width, 0]);
@@ -191,12 +197,14 @@ function drawSide(sideConfig) {
         len: width,
         toothLength: width - legsWidth * 2,
         toothDepth: legsLength,
-    }, 0)  // no tolerance needed - its not a joint
+        tolerance: 0, // no tolerance needed - its not a joint
+    })
     let top = drawToothedLine({
         len: width,
         toothLength: lidToothLength,
         toothDepth,
-    }, -tolerance['length'])  // negative tolerance - its receiving part
+        tolerance: -toleranceConfig.length, // negative tolerance - its receiving part
+    })
     top = makerjs.model.mirror(top, false, true);
     const models = {
         leftWall,
@@ -205,16 +213,15 @@ function drawSide(sideConfig) {
         top,
     }
     makerjs.model.move(top, [0, height]);
-    addUndercuts(models, roundings);
+    addUndercuts(models);
     if (handles !== null) {
         addHandles(models, sideConfig, handles)
     }
-    addToothHoles(models, sideConfig, tolerance['width']);
+    addToothHoles(models, sideConfig);
     return {models};
 }
 
-function drawBottom(bottomConfig) {
-    const {lenX, lenY, xToothCount, yToothCount, toothDepth, toothLength, roundings, tolerance} = bottomConfig;
+function drawBottom() {
     const spacingY = (lenY - toothLength * yToothCount) / yToothCount;
     const leftWall = drawToothedLine({
         len: lenY,
@@ -222,7 +229,8 @@ function drawBottom(bottomConfig) {
         toothLength: toothLength,
         toothSpacing: spacingY,
         toothDepth,
-    }, tolerance['length']);
+        tolerance: toleranceConfig.length
+    });
     makerjs.model.rotate(leftWall, 90, [0, 0]);
     const rightWall = makerjs.model.mirror(leftWall, true, false);
     makerjs.model.move(rightWall, [lenX, 0]);
@@ -234,26 +242,23 @@ function drawBottom(bottomConfig) {
         toothLength: toothLength,
         toothSpacing: spacingX,
         toothDepth,
-        tolerance
-    }, tolerance['length']);
+        tolerance: toleranceConfig.length,
+    });
     const topWall = makerjs.model.mirror(bottomWall, false, true);
     makerjs.model.move(bottomWall, [0, lenY]);
 
     const models = {leftWall, rightWall, bottomWall, topWall};
-    addUndercuts(models, roundings);
+    addUndercuts(models);
     return {models}
 }
 
-function drawTop(topConfig) {
-    const {
-        lenX, lenY, lidToothLenX, lidToothLenY, toothDepth, roundings, tolerance,
-        ventHoleDiameter, ventHoleOffset
-    } = topConfig;
+function drawTop() {
     const leftWall = drawToothedLine({
         len: lenY,
         toothLength: lidToothLenY,
         toothDepth,
-    }, tolerance['length']);
+        tolerance: toleranceConfig.length
+    });
     makerjs.model.rotate(leftWall, 90, [0, 0]);
     const rightWall = makerjs.model.mirror(leftWall, true, false);
     makerjs.model.move(rightWall, [lenX, 0]);
@@ -262,12 +267,13 @@ function drawTop(topConfig) {
         len: lenX,
         toothLength: lidToothLenX,
         toothDepth,
-    }, tolerance['length']);
+        tolerance: toleranceConfig.length
+    });
     const topWall = makerjs.model.mirror(bottomWall, false, true);
     makerjs.model.move(bottomWall, [0, lenY]);
 
     const models = {leftWall, rightWall, bottomWall, topWall};
-    addUndercuts(models, roundings);
+    addUndercuts(models);
 
     // add vent holes
     const vh1 = new makerjs.paths.Circle([ventHoleOffset + ventHoleDiameter / 2, lenY / 2],
@@ -283,18 +289,9 @@ function render() {
     const sideX = drawSide({
         width: lenX,
         height: lenZ,
-        zSegmentsCount,
         toothHolesCount: xToothCount,
-        toothHolesLength: toothLength,
-        toothHolesWidth: materialWidth,
-        toothHolesElevation: materialWidth * 2,
-        toothDepth: materialWidth,
-        tolerance,
-        legsWidth,
-        legsLength,
         lidToothLength: lidToothLenX,
-        roundings,
-        mother: true,
+        isMother: true,
         handles: {
             count: handlesCount,
             descent: handlesDescent,
@@ -308,32 +305,18 @@ function render() {
     const sideY = drawSide({
         width: lenY,
         height: lenZ,
-        zSegmentsCount,
         toothHolesCount: yToothCount,
-        toothHolesLength: toothLength,
-        toothHolesWidth: materialWidth,
-        toothHolesElevation,
-        toothDepth: materialWidth,
-        tolerance,
-        legsWidth,
-        legsLength,
         lidToothLength: lidToothLenY,
-        roundings,
-        mother: false
+        isMother: false
     });
     makerjs.model.move(sideY, [lenX * drawingsSpacingCoefficient, 0]);
     const sideY2 = makerjs.cloneObject(sideY, [lenX * drawingsSpacingCoefficient, 0]);
     makerjs.model.move(sideY2, [lenX * drawingsSpacingCoefficient, lenZ * drawingsSpacingCoefficient]);
 
-    const bottom = drawBottom({
-        lenX, lenY, xToothCount, yToothCount, toothDepth: materialWidth, toothLength, roundings, tolerance
-    });
+    const bottom = drawBottom();
     makerjs.model.move(bottom, [0, lenZ * 2 * drawingsSpacingCoefficient]);
 
-    const top = drawTop({
-        lenX, lenY, lidToothLenX, lidToothLenY, toothDepth: materialWidth, roundings, tolerance,
-        ventHoleDiameter, ventHoleOffset
-    });
+    const top = drawTop();
     makerjs.model.move(top, [lenX * drawingsSpacingCoefficient, lenZ * 2 * drawingsSpacingCoefficient]);
 
     this.models = {
