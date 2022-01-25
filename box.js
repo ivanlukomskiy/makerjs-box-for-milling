@@ -30,13 +30,13 @@ const yToothCount = Math.max(1, Math.round(lenY / desiredLengthPerHorizontalToot
 
 // Ширна и длина ножек коробки
 const legsWidth = Math.max(50, Math.max(lenX, lenY) / 10);
-const legsLength = lenZ * 0.05;
+const legsLength = sheetThickness;
 
 // Радиус скруглений внутренних углов
 const roundings = 3;
 
 // Число ручек
-const handlesCount = lenX > 750 ? 2 : 1;
+const handlesCount = lenY > 750 ? 2 : 1;
 // Ширина и радиус скругления ручки
 const handlesWidth = 150;
 const handlesRadius = 20;
@@ -45,15 +45,15 @@ const handlesDescent = 4 * sheetThickness;
 
 // Диаметр вентиляционного отверстия и его отступ от края коробки
 const ventHoleDiameter = 40;
-const ventHoleOffset = lenX * 0.05;
+const ventHoleOffset = 50;
 
 // Влияет насколько далеко чертежи стенок расположены друг от друга
 const drawingsSpacingCoefficient = 1.5;
 
 // Размеры паза под крышку коробки
 const lidToothLengthFraction = 0.8;
-const lidToothLenX = lenX * lidToothLengthFraction;
-const lidToothLenY = lenY * lidToothLengthFraction;
+const lidToothLenX = Math.min(lenX, lenY) * lidToothLengthFraction;
+const lidToothLenY = Math.min(lenX, lenY) * lidToothLengthFraction;
 
 // Отступ отверстий под зубья дна коробки от нижнего края стенки
 const toothHolesElevation = 2 * sheetThickness;
@@ -300,13 +300,7 @@ function render() {
         height: lenZ,
         toothHolesCount: xToothCount,
         lidToothLength: lidToothLenX,
-        isMother: true,
-        handles: {
-            count: handlesCount,
-            descent: handlesDescent,
-            width: handlesWidth,
-            radius: handlesRadius,
-        }
+        isMother: true
     });
     const sideX2 = makerjs.cloneObject(sideX, [lenX * drawingsSpacingCoefficient, 0]);
     makerjs.model.move(sideX2, [0, lenZ * drawingsSpacingCoefficient]);
@@ -316,7 +310,13 @@ function render() {
         height: lenZ,
         toothHolesCount: yToothCount,
         lidToothLength: lidToothLenY,
-        isMother: false
+        isMother: false,
+        handles: {
+            count: handlesCount,
+            descent: handlesDescent,
+            width: handlesWidth,
+            radius: handlesRadius,
+        }
     });
     makerjs.model.move(sideY, [lenX * drawingsSpacingCoefficient, 0]);
     const sideY2 = makerjs.cloneObject(sideY, [lenX * drawingsSpacingCoefficient, 0]);
