@@ -4,17 +4,26 @@
 var makerjs = require('makerjs');
 
 // Линейные размеры макета
-const designLenX = 600;
-const designLenY = 450;
-const designLenZ = 400;
+const designLenX = 600;  // Длина
+const designLenY = 450;  // Ширина
+const designLenZ = 300;  // Высота
+
+const toothLength = 100;  // Длина зуба для дна коробки
+const sheetThickness = 14;  // Толщина листа
+
+// Длина ножек коробки
+const legsLength = sheetThickness;
+
+// Отступ отверстий под зубья дна коробки от нижнего края стенки
+const toothHolesElevation = 2 * sheetThickness;
 
 // Линейные размеры коробки
 const lenX = designLenX + 40;
 const lenY = designLenY + 40;
-const lenZ = designLenZ + 40;
+const lenZ = designLenZ + legsLength + toothHolesElevation + 40;
 
-const toothLength = 100;  // Длина зуба для дна коробки
-const sheetThickness = 14;  // Толщина листа
+// Ширина ножек коробки
+const legsWidth = Math.max(50, Math.max(lenX, lenY) / 10);
 
 // Допуски, положительный - более тугая посадка, отрицательный - более свободная
 const toleranceConfig = {
@@ -33,10 +42,6 @@ const desiredLengthPerHorizontalTooth = 500;
 // Число зубцов для дна коробки по двум сторонам
 const xToothCount = Math.max(1, Math.round(lenX / desiredLengthPerHorizontalTooth));
 const yToothCount = Math.max(1, Math.round(lenY / desiredLengthPerHorizontalTooth));
-
-// Ширна и длина ножек коробки
-const legsWidth = Math.max(50, Math.max(lenX, lenY) / 10);
-const legsLength = sheetThickness;
 
 // Радиус скруглений внутренних углов
 const roundings = 3;
@@ -60,9 +65,6 @@ const drawingsSpacingCoefficient = 1.5;
 const lidToothOffset = 0.2 * Math.min(lenX, lenY);
 const lidToothLenX = lenX - 2 * lidToothOffset;
 const lidToothLenY = lenY - 2 * lidToothOffset;
-
-// Отступ отверстий под зубья дна коробки от нижнего края стенки
-const toothHolesElevation = 2 * sheetThickness;
 
 // Длина и ширина отверстий под зубья дна коробки
 const toothHolesLength = toothLength;
@@ -92,8 +94,11 @@ function drawToothedLine(lineConfig) {
     } = lineConfig;
 
     let totalOffset = len - toothCount * toothLength - (toothCount - 1) * toothSpacing;
+    if (Math.abs(totalOffset) < 0.00000001) {
+        totalOffset = 0;
+    }
     if (totalOffset < 0) {
-        throw "Negative offset of wall";
+        throw "Negative offset of wall, " + JSON.stringify(lineConfig, null, 2) + ", " + totalOffset;
     }
     let offsetLeft = 0, offsetRight = 0;
 
