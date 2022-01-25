@@ -159,17 +159,26 @@ function addHandles(models, sideConfig, handles) {
     }
 }
 
+function getToothHolePositions(len, holesCount) {
+    const spacing = (len - holesCount * toothHolesLength) / holesCount;
+    const positions = [];
+    for (let i = 0; i < holesCount; i++) {
+        const x = (spacing + toothHolesLength) * (i + 0.5);
+        positions.push(x)
+    }
+    return positions;
+}
+
 function addToothHoles(models, sideConfig) {
-    const {
-        toothHolesCount, width
-    } = sideConfig;
-    const spacing = (width - toothHolesCount * toothHolesLength) / toothHolesCount;
+    const { toothHolesCount, width } = sideConfig;
+    const positions = getToothHolePositions(width, toothHolesCount)
     const toothHoles = {}
-    for (let i = 0; i < toothHolesCount; i++) {
-        const handle = new makerjs.models.Rectangle(toothHolesLength, toothHolesWidth - toleranceConfig.width)
-        const x = spacing * (i + 0.5) + toothHolesLength * i;
-        makerjs.model.move(handle, [x, toothHolesElevation + legsLength + toleranceConfig.width / 2]);
-        toothHoles['toothHole' + i] = handle;
+    const realHoleLength = toothHolesLength - toleranceConfig.length;
+    for (let position of positions) {
+        const hole = new makerjs.models.Rectangle(realHoleLength, toothHolesWidth - toleranceConfig.width)
+        makerjs.model.move(hole,
+            [position - realHoleLength / 2, toothHolesElevation + legsLength + toleranceConfig.width / 2]);
+        toothHoles['toothHole' + position] = hole;
     }
     addUndercuts(toothHoles);
     models['toothHoles'] = {models: toothHoles};
