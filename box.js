@@ -4,7 +4,7 @@
 var makerjs = require('makerjs');
 
 // Линейные размеры макета
-const designLenX = 600;  // Длина
+const designLenX = 750;  // Длина
 const designLenY = 450;  // Ширина
 const designLenZ = 300;  // Высота
 
@@ -49,7 +49,7 @@ const roundings = 3;
 // Число ручек
 const handlesCount = lenY > 750 ? 2 : 1;
 // Ширина и радиус скругления ручки
-const handlesWidth = 150;
+const totalHandleWidth = 175;
 const handlesRadius = 20;
 // Отступ ручки от верха коробки
 const handlesDescent = 4 * sheetThickness;
@@ -72,6 +72,9 @@ const toothHolesWidth = sheetThickness;
 
 // Длина зубцов
 const toothDepth = sheetThickness;
+
+// Ширина ручки без учёта скруглений
+const handlesWidth = totalHandleWidth - 2 * handlesRadius;
 
 const Align = Object.freeze({'center': 1, 'right': 2})
 
@@ -299,9 +302,9 @@ function drawTop() {
     addUndercuts(models);
 
     // add vent holes
-    const vh1 = new makerjs.paths.Circle([ventHoleOffset + ventHoleDiameter / 2, realLenY / 2],
+    const vh1 = new makerjs.paths.Circle([ventHoleOffset - toothDepth, realLenY / 2],
         ventHoleDiameter / 2);
-    const vh2 = new makerjs.paths.Circle([realLenX - ventHoleOffset - ventHoleDiameter / 2, realLenY / 2],
+    const vh2 = new makerjs.paths.Circle([realLenX - ventHoleOffset + toothDepth, realLenY / 2],
         ventHoleDiameter / 2);
     models['ventHoles'] = {paths: {vh1, vh2}}
 
