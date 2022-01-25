@@ -20,7 +20,7 @@ const toothHolesElevation = 2 * sheetThickness;
 // Линейные размеры коробки
 const lenX = designLenX + 40;
 const lenY = designLenY + 40;
-const lenZ = designLenZ + legsLength + toothHolesElevation + sheetThickness + 40;
+const lenZ = designLenZ + legsLength + toothHolesElevation + 2 * sheetThickness + 40;
 
 // Ширина ножек коробки
 const legsWidth = Math.max(50, Math.max(lenX, lenY) / 10);
